@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>A Sunny Day</title>
+<title>Your Sunny Day</title>
 <style>
   body {
     font-family: sans-serif;
@@ -10,18 +10,42 @@
     background: #fdf6e3;
   }
 
+  #statusPanel {
+    max-width: 640px;
+    margin: 16px auto 0;
+  }
+
+  #statusPanel p {
+    margin: 8px 0;
+  }
+
   /* The wheel is just a div with a colored conic-gradient background,
      sliced into equal sections - one per activity. */
   #wheel {
     width: 300px;
     height: 300px;
-    margin: 40px auto;
+    margin: 24px auto 20px;
     border-radius: 50%;
     border: 6px solid #333;
     position: relative;
     transition: transform 4s cubic-bezier(0.17, 0.67, 0.32, 1.4);
     /* transform gets set by JS when we spin - this transition is what
        makes it visually "ease out" instead of snapping instantly */
+  }
+
+  .wheelLabel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 64px;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    font-size: 11px;
+    line-height: 1.1;
+    font-weight: 700;
+    color: #222;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+    pointer-events: none;
   }
 
   /* A little pointer fixed above the wheel so you can see what it landed on */
@@ -205,7 +229,12 @@
 <!-- ==== SCREEN 1: WHEEL ==== -->
 <div id="wheelScreen" class="screen">
 
-<h1>A Sunny Day</h1>
+<h1>Your Sunny Day</h1>
+
+<div id="statusPanel">
+  <p id="result"></p>
+  <p id="spinAgainHint">Spin a few more times to fill out your whole day — each spin adds another activity to your schedule.</p>
+</div>
 
 <!-- ---- BUCKET LIST EDITOR ---- -->
 <!-- Lets the user build their own activity list instead of using a hardcoded one.
@@ -222,8 +251,6 @@
 <div id="wheel"></div>
 
 <button id="spinBtn">Spin the Wheel</button>
-<p id="result"></p>
-<p id="spinAgainHint">Spin a few more times to fill out your whole day — each spin adds another activity to your schedule.</p>
 
 </div>
 <!-- ==== END SCREEN 1 ==== -->
@@ -560,11 +587,27 @@
     const sliceAngle = 360 / activities.length;
     let gradientParts = [];
 
+    wheel.innerHTML = "";
+
     activities.forEach((activity, i) => {
       const start = i * sliceAngle;
       const end = start + sliceAngle;
       const color = colors[i % colors.length]; // loop back through colors if more activities than colors
       gradientParts.push(`${color} ${start}deg ${end}deg`);
+
+      const label = document.createElement("div");
+      label.className = "wheelLabel";
+      label.textContent = activity.name.length > 12 ? activity.name.slice(0, 12) + "…" : activity.name;
+
+      const angle = (i + 0.5) * sliceAngle;
+      const angleRadians = (angle - 90) * (Math.PI / 180);
+      const radius = 35;
+      const x = 50 + Math.cos(angleRadians) * radius;
+      const y = 50 + Math.sin(angleRadians) * radius;
+
+      label.style.left = `${x}%`;
+      label.style.top = `${y}%`;
+      wheel.appendChild(label);
     });
 
     wheel.style.background = `conic-gradient(${gradientParts.join(", ")})`;
