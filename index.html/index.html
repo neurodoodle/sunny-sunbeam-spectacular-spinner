@@ -33,6 +33,17 @@
     margin: 8px 0;
   }
 
+  #result {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 16px;
+    background: #f9d9df;
+    color: #3a2b2d;
+    font-size: 1.2rem;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
   /* The wheel is just a div with a colored conic-gradient background,
      sliced into equal sections - one per activity. */
   #wheel {
@@ -127,12 +138,23 @@
 
   #activityList li {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 8px;
     background: #fff;
     border-radius: 4px;
     padding: 6px 10px;
     margin-bottom: 6px;
+  }
+
+  #activityList li .activityTimeInput {
+    width: 78px;
+    min-width: 78px;
+    font-size: 12px;
+    padding: 5px 6px;
+  }
+
+  #activityList li .activityLabel {
+    flex: 1;
   }
 
   #activityList button {
@@ -164,11 +186,31 @@
     color: #333;
   }
 
+  #checklistLayout {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+    max-width: 1000px;
+    margin: 24px auto 0;
+    padding: 0 20px;
+  }
+
+  .checklistPane {
+    flex: 0 0 360px;
+    text-align: left;
+  }
+
+  .sunPane {
+    flex: 0 0 500px;
+    text-align: center;
+  }
+
   #checklist {
     list-style: none;
     padding: 0;
     max-width: 320px;
-    margin: 16px auto;
+    margin: 16px 0;
     text-align: left;
   }
 
@@ -352,20 +394,25 @@
     Congrats on completing an activity! Pick a color and fill in a ray of sunshine.
   </div>
 
-  <div id="colorPickerWrap">
-    Pick a color: <input type="color" id="colorPicker" value="#fbbc04">
+  <div id="checklistLayout">
+    <div class="checklistPane">
+      <div id="colorPickerWrap">
+        Pick a color: <input type="color" id="colorPicker" value="#fbbc04">
+      </div>
+      <ul id="checklist"></ul>
+    </div>
+
+    <div class="sunPane">
+      <h2>Your Sunshine Mosaic</h2>
+      <svg id="sunPicture" viewBox="0 0 300 300" width="420" height="420">
+        <!-- Center of the sun - always yellow, not tied to any activity -->
+        <circle cx="150" cy="150" r="45" fill="#ffd54f" stroke="#333" stroke-width="3"></circle>
+        <!-- 8 rays, positioned by hand around the circle. Each starts empty (fill="none")
+             and gets colored in by JS when its linked checklist item is checked. -->
+        <g id="rayGroup"></g>
+      </svg>
+    </div>
   </div>
-
-  <ul id="checklist"></ul>
-
-  <h2>Your Sunshine Mosaic</h2>
-  <svg id="sunPicture" viewBox="0 0 300 300" width="420" height="420">
-    <!-- Center of the sun - always yellow, not tied to any activity -->
-    <circle cx="150" cy="150" r="45" fill="#ffd54f" stroke="#333" stroke-width="3"></circle>
-    <!-- 8 rays, positioned by hand around the circle. Each starts empty (fill="none")
-         and gets colored in by JS when its linked checklist item is checked. -->
-    <g id="rayGroup"></g>
-  </svg>
 
 </div>
 <!-- ==== END SCREEN 2 ==== -->
@@ -398,12 +445,12 @@
   // (before they've customized anything). After that, whatever is saved
   // in localStorage takes over.
   const defaultActivities = [
-    { name: "Go for a walk", duration: 30 },
-    { name: "Read a book", duration: 45 },
-    { name: "Bake something", duration: 60 },
-    { name: "Call a friend", duration: 20 },
-    { name: "Draw or paint", duration: 40 },
-    { name: "Watch the sunset", duration: 20 }
+    { name: "Go for a walk", duration: 30, time: "09:00" },
+    { name: "Read a book", duration: 45, time: "11:00" },
+    { name: "Bake something", duration: 60, time: "13:00" },
+    { name: "Call a friend", duration: 20, time: "15:00" },
+    { name: "Draw or paint", duration: 40, time: "16:30" },
+    { name: "Watch the sunset", duration: 20, time: "19:00" }
   ];
 
   // Load saved list from localStorage, or fall back to the defaults.
@@ -413,7 +460,7 @@
   // Migration safety net: if you tested this before durations were added,
   // your saved list is plain strings like "Read a book" instead of objects.
   // This upgrades them in place so old test data doesn't break the app.
-  activities = activities.map(a => typeof a === "string" ? { name: a, duration: 30 } : a);
+  activities = activities.map(a => typeof a === "string" ? { name: a, duration: 30, time: "09:00" } : { time: "09:00", ...a });
 
   const wheel = document.getElementById("wheel");
   const spinBtn = document.getElementById("spinBtn");
@@ -460,10 +507,20 @@
   // Called every time the wheel lands on an activity - adds it as a new
   // uncompleted item on the checklist screen, carrying its estimated duration along.
   function addToTodaysList(activity) {
-    todaysList.push({ name: activity.name, duration: activity.duration || 30, done: false, color: null });
+    todaysList.push({ name: activity.name, duration: activity.duration || 30, time: activity.time || "09:00", done: false, color: null, rayIndex: null });
     saveTodaysList();
     renderChecklist();
     renderSchedule(); // new activity means the schedule needs to grow too
+  }
+
+  function syncTodaysListTimes() {
+    todaysList.forEach(item => {
+      const matchingActivity = activities.find(activity => activity.name === item.name);
+      if (matchingActivity && matchingActivity.time) {
+        item.time = matchingActivity.time;
+      }
+    });
+    saveTodaysList();
   }
 
   function showCompletionToast() {
@@ -491,18 +548,13 @@
 
       const label = document.createElement("label");
       label.htmlFor = checkbox.id;
-      label.textContent = `${item.name} (${item.duration} min)`;
+      const timeText = item.time ? `${item.time} · ` : "";
+      label.textContent = `${timeText}${item.name} (${item.duration} min)`;
 
       const colorInput = document.createElement("input");
       colorInput.type = "color";
       colorInput.value = item.color || colorPicker.value;
       colorInput.disabled = !checkbox.checked;
-
-      const paintButton = document.createElement("button");
-      paintButton.type = "button";
-      paintButton.className = "paintButton";
-      paintButton.textContent = "Paint ray";
-      paintButton.disabled = !checkbox.checked;
 
       checkbox.addEventListener("change", () => {
         item.done = checkbox.checked;
@@ -512,10 +564,10 @@
           showCompletionToast();
         } else {
           item.color = null;
+          item.rayIndex = null;
         }
 
         colorInput.disabled = !item.done;
-        paintButton.disabled = !item.done;
         saveTodaysList();
         renderChecklist();
         updateSunRays();
@@ -529,24 +581,47 @@
         }
       });
 
-      paintButton.addEventListener("click", () => {
-        if (!item.done) return;
-        const rayIndex = todaysList.findIndex(entry => entry === item);
-        if (rayIndex >= 0 && rayIndex < RAY_COUNT) {
-          const ray = document.getElementById("ray" + rayIndex);
-          const selectedColor = item.color || colorPicker.value;
-          ray.setAttribute("fill", selectedColor);
-          item.color = selectedColor;
-          saveTodaysList();
-          updateSunRays();
-        }
-      });
-
       checkWrap.appendChild(checkbox);
       checkWrap.appendChild(label);
       li.appendChild(checkWrap);
       li.appendChild(colorInput);
-      li.appendChild(paintButton);
+
+      if (item.done) {
+        const paintButton = document.createElement("button");
+        paintButton.type = "button";
+        paintButton.className = "paintButton";
+        paintButton.textContent = "Paint ray";
+
+        paintButton.addEventListener("click", () => {
+          if (!item.done) return;
+
+          const usedRayIndexes = new Set(
+            todaysList
+              .filter(entry => entry && entry !== item && entry.rayIndex !== null && entry.rayIndex !== undefined)
+              .map(entry => entry.rayIndex)
+          );
+
+          let nextRayIndex = null;
+          for (let i = 0; i < RAY_COUNT; i++) {
+            if (!usedRayIndexes.has(i)) {
+              nextRayIndex = i;
+              break;
+            }
+          }
+
+          if (nextRayIndex === null) {
+            nextRayIndex = item.rayIndex !== null && item.rayIndex !== undefined ? item.rayIndex : 0;
+          }
+
+          item.rayIndex = nextRayIndex;
+          item.color = item.color || colorPicker.value;
+          saveTodaysList();
+          updateSunRays();
+        });
+
+        li.appendChild(paintButton);
+      }
+
       checklistEl.appendChild(li);
     });
   }
@@ -585,8 +660,8 @@
   function updateSunRays() {
     for (let i = 0; i < RAY_COUNT; i++) {
       const ray = document.getElementById("ray" + i);
-      const item = todaysList[i];
-      ray.setAttribute("fill", item && item.done ? item.color : "none");
+      const assignedItem = todaysList.find(item => item && item.done && item.rayIndex === i);
+      ray.setAttribute("fill", assignedItem && assignedItem.color ? assignedItem.color : "none");
     }
   }
 
@@ -646,14 +721,16 @@
       const timeLabel = (displayHour === 0 ? 12 : displayHour > 12 ? displayHour - 12 : displayHour)
         + ":" + String(startMin).padStart(2, "0") + (displayHour >= 12 ? "pm" : "am");
 
-      const pastelIndex = (todaysList.indexOf(item) + 1) % pastelColors.length;
+      const pastelIndex = (index + 1) % pastelColors.length;
       const color = item.color || pastelColors[pastelIndex];
       block.style.background = color;
       block.style.borderColor = "#333";
 
+      const visualTime = item.time || timeLabel;
+
       block.innerHTML = `
         <strong>${item.name}</strong>
-        <div class="blockTime">${timeLabel} · <input type="number" class="durationEdit" value="${item.duration}" min="5" step="5"> min</div>
+        <div class="blockTime">${visualTime} · <input type="number" class="durationEdit" value="${item.duration}" min="5" step="5"> min</div>
         <div class="blockTime"><input type="color" class="scheduleColorPicker" value="${color}" aria-label="Choose color for ${item.name}"> color</div>
       `;
 
@@ -670,6 +747,7 @@
       scheduleColorPicker.addEventListener("input", () => {
         item.color = scheduleColorPicker.value;
         item.done = true;
+        item.rayIndex = item.rayIndex !== null && item.rayIndex !== undefined ? item.rayIndex : 0;
         block.style.background = item.color;
         saveTodaysList();
         updateSunRays();
@@ -696,7 +774,13 @@
     activities.forEach((activity, index) => {
       const li = document.createElement("li");
 
+      const timeInput = document.createElement("input");
+      timeInput.type = "time";
+      timeInput.className = "activityTimeInput";
+      timeInput.value = activity.time || "09:00";
+
       const label = document.createElement("span");
+      label.className = "activityLabel";
       label.textContent = `${activity.name} (${activity.duration} min)`;
 
       const removeBtn = document.createElement("button");
@@ -709,10 +793,20 @@
         }
         activities.splice(index, 1); // remove this one item
         saveActivities();
+        syncTodaysListTimes();
         renderActivityList();
         buildWheelBackground();
       });
 
+      timeInput.addEventListener("change", () => {
+        activity.time = timeInput.value;
+        saveActivities();
+        syncTodaysListTimes();
+        renderChecklist();
+        renderSchedule();
+      });
+
+      li.appendChild(timeInput);
       li.appendChild(label);
       li.appendChild(removeBtn);
       activityListEl.appendChild(li);
