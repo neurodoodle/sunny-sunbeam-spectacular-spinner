@@ -12,11 +12,11 @@
   }
 
   .siteHeader {
-    background: #333;
-    color: #fff;
+    background: #b9e7c0;
+    color: #1f2d1a;
     padding: 18px 20px;
     text-align: center;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   }
 
   .siteHeader h1 {
@@ -220,6 +220,16 @@
     display: block;
   }
 
+  .paintButton {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: #e8f7d6;
+    color: #1f2d1a;
+    cursor: pointer;
+  }
+
   .ray {
     stroke: #333;
     stroke-width: 2;
@@ -416,6 +426,7 @@
   const colorPicker = document.getElementById("colorPicker");
   const completionToast = document.getElementById("completionToast");
   const rayGroup = document.getElementById("rayGroup");
+  const pastelColors = ["#f8d9d9", "#fce4c8", "#fbe7a1", "#d9f0c2", "#cfeef0", "#dfe7ff", "#efd9f9", "#f9d9ea"];
   const dayStartHourInput = document.getElementById("dayStartHour");
   const hourGrid = document.getElementById("hourGrid");
   const scheduleBlocksEl = document.getElementById("scheduleBlocks");
@@ -487,8 +498,13 @@
       colorInput.value = item.color || colorPicker.value;
       colorInput.disabled = !checkbox.checked;
 
+      const paintButton = document.createElement("button");
+      paintButton.type = "button";
+      paintButton.className = "paintButton";
+      paintButton.textContent = "Paint ray";
+      paintButton.disabled = !checkbox.checked;
+
       checkbox.addEventListener("change", () => {
-        const wasChecked = item.done;
         item.done = checkbox.checked;
         if (item.done) {
           item.color = item.color || colorPicker.value;
@@ -499,6 +515,7 @@
         }
 
         colorInput.disabled = !item.done;
+        paintButton.disabled = !item.done;
         saveTodaysList();
         renderChecklist();
         updateSunRays();
@@ -512,10 +529,24 @@
         }
       });
 
+      paintButton.addEventListener("click", () => {
+        if (!item.done) return;
+        const rayIndex = todaysList.findIndex(entry => entry === item);
+        if (rayIndex >= 0 && rayIndex < RAY_COUNT) {
+          const ray = document.getElementById("ray" + rayIndex);
+          const selectedColor = item.color || colorPicker.value;
+          ray.setAttribute("fill", selectedColor);
+          item.color = selectedColor;
+          saveTodaysList();
+          updateSunRays();
+        }
+      });
+
       checkWrap.appendChild(checkbox);
       checkWrap.appendChild(label);
       li.appendChild(checkWrap);
       li.appendChild(colorInput);
+      li.appendChild(paintButton);
       checklistEl.appendChild(li);
     });
   }
@@ -615,9 +646,15 @@
       const timeLabel = (displayHour === 0 ? 12 : displayHour > 12 ? displayHour - 12 : displayHour)
         + ":" + String(startMin).padStart(2, "0") + (displayHour >= 12 ? "pm" : "am");
 
+      const pastelIndex = (todaysList.indexOf(item) + 1) % pastelColors.length;
+      const color = item.color || pastelColors[pastelIndex];
+      block.style.background = color;
+      block.style.borderColor = "#333";
+
       block.innerHTML = `
         <strong>${item.name}</strong>
         <div class="blockTime">${timeLabel} · <input type="number" class="durationEdit" value="${item.duration}" min="5" step="5"> min</div>
+        <div class="blockTime"><input type="color" class="scheduleColorPicker" value="${color}" aria-label="Choose color for ${item.name}"> color</div>
       `;
 
       // Editing duration right in the block recalculates this block's height
@@ -627,6 +664,15 @@
         item.duration = parseInt(durationInput.value) || item.duration;
         saveTodaysList();
         renderSchedule(); // rebuild everything - simplest way to keep positions correct
+      });
+
+      const scheduleColorPicker = block.querySelector(".scheduleColorPicker");
+      scheduleColorPicker.addEventListener("input", () => {
+        item.color = scheduleColorPicker.value;
+        item.done = true;
+        block.style.background = item.color;
+        saveTodaysList();
+        updateSunRays();
       });
 
       scheduleBlocksEl.appendChild(block);
