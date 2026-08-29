@@ -272,6 +272,16 @@
     cursor: pointer;
   }
 
+  .deleteChecklistButton {
+    padding: 4px 7px;
+    font-size: 12px;
+    border: 1px solid #d98282;
+    border-radius: 4px;
+    background: #fff;
+    color: #b34f4f;
+    cursor: pointer;
+  }
+
   .ray {
     stroke: #333;
     stroke-width: 2;
@@ -552,6 +562,18 @@
       colorInput.value = item.color || colorPicker.value;
       colorInput.disabled = !checkbox.checked;
 
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "deleteChecklistButton";
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", () => {
+        todaysList.splice(index, 1);
+        saveTodaysList();
+        renderChecklist();
+        renderSchedule();
+        updateSunRays();
+      });
+
       checkbox.addEventListener("change", () => {
         item.done = checkbox.checked;
         if (item.done) {
@@ -583,6 +605,7 @@
       checkWrap.appendChild(label);
       li.appendChild(checkWrap);
       li.appendChild(colorInput);
+      li.appendChild(deleteButton);
 
       if (item.done) {
         const paintButton = document.createElement("button");
