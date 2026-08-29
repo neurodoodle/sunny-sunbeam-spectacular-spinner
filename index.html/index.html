@@ -24,6 +24,44 @@
     font-size: 2.2rem;
   }
 
+  .miniSunRow {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    height: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .miniSun {
+    display: block;
+    color: #f7c948;
+    font-size: 25px;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(83, 67, 20, 0.25);
+    animation: spinMiniSun 6s linear infinite;
+  }
+
+  .miniSun:nth-child(2) { animation-delay: -1.2s; }
+  .miniSun:nth-child(3) { animation-delay: -2.4s; }
+  .miniSun:nth-child(4) { animation-delay: -3.6s; }
+  .miniSun:nth-child(5) { animation-delay: -4.8s; }
+  .miniSun:nth-child(6) { animation-delay: -1.8s; }
+  .miniSun:nth-child(7) { animation-delay: -3s; }
+  .miniSun:nth-child(8) { animation-delay: -4.2s; }
+  .miniSun:nth-child(9) { animation-delay: -5.4s; }
+
+  @keyframes spinMiniSun {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .miniSun { animation: none; }
+  }
+
   #statusPanel {
     max-width: 640px;
     margin: 16px auto 0;
@@ -183,13 +221,13 @@
 
   #mainNav {
     padding: 16px;
-    background: #333;
+    background: #f9d9df;
   }
 
   #mainNav button {
     background: none;
     border: 2px solid #fbbc04;
-    color: white;
+    color: #000;
     padding: 8px 16px;
     margin: 0 6px;
     border-radius: 6px;
@@ -198,7 +236,7 @@
 
   #mainNav button.activeNav {
     background: #fbbc04;
-    color: #333;
+    color: #000;
   }
 
   #checklistLayout {
@@ -456,6 +494,18 @@
 <header class="siteHeader">
   <h1>Your Sunny Day</h1>
 </header>
+
+<div class="miniSunRow" aria-hidden="true">
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+</div>
 
 <!-- ---- NAVIGATION ---- -->
 <nav id="mainNav">
