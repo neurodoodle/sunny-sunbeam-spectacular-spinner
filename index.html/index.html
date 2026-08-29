@@ -682,7 +682,19 @@
   // ---- TODAY'S CHECKLIST DATA ----
   // Separate from the bucket list! The bucket list is what CAN be spun.
   // todaysList is what HAS been spun today, and whether it's been completed.
-  let todaysList = JSON.parse(localStorage.getItem("todaysList")) || [];
+  const savedTodaysList = localStorage.getItem("todaysList");
+  let todaysList = savedTodaysList
+    ? JSON.parse(savedTodaysList)
+    : [...activities]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Math.min(5, activities.length))
+      .map(activity => ({
+        name: activity.name,
+        duration: activity.duration || 30,
+        done: false,
+        color: null,
+        rayIndex: null
+      }));
   todaysList = todaysList.map(item => ({ duration: 30, ...item })); // fill in duration if missing from old test data
   let nextStartMinute = 120;
   todaysList = todaysList.map(item => {
@@ -696,6 +708,8 @@
   function saveTodaysList() {
     localStorage.setItem("todaysList", JSON.stringify(todaysList));
   }
+
+  if (!savedTodaysList) saveTodaysList();
 
   function resetTodaysActivities() {
     todaysList = [];
