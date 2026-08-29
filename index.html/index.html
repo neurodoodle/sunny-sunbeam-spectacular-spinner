@@ -8,6 +8,20 @@
     font-family: sans-serif;
     text-align: center;
     background: #fdf6e3;
+    margin: 0;
+  }
+
+  .siteHeader {
+    background: #333;
+    color: #fff;
+    padding: 18px 20px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .siteHeader h1 {
+    margin: 0;
+    font-size: 2.2rem;
   }
 
   #statusPanel {
@@ -190,6 +204,22 @@
     cursor: pointer;
   }
 
+  #completionToast {
+    display: none;
+    max-width: 520px;
+    margin: 12px auto 0;
+    background: #fff8d6;
+    border: 2px solid #f5c344;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  #completionToast.show {
+    display: block;
+  }
+
   .ray {
     stroke: #333;
     stroke-width: 2;
@@ -257,6 +287,10 @@
 </head>
 <body>
 
+<header class="siteHeader">
+  <h1>Your Sunny Day</h1>
+</header>
+
 <!-- ---- NAVIGATION ---- -->
 <nav id="mainNav">
   <button class="navBtn" data-target="wheelScreen">Wheel</button>
@@ -304,14 +338,18 @@
   <h1>Today's Checklist</h1>
   <p>Check off an activity to fill in a ray of sunshine.</p>
 
+  <div id="completionToast" role="status" aria-live="polite">
+    Congrats on completing an activity! Pick a color and fill in a ray of sunshine.
+  </div>
+
   <div id="colorPickerWrap">
     Pick a color: <input type="color" id="colorPicker" value="#fbbc04">
   </div>
 
   <ul id="checklist"></ul>
 
-  <h2>Your Sunshine</h2>
-  <svg id="sunPicture" viewBox="0 0 300 300" width="280" height="280">
+  <h2>Your Sunshine Mosaic</h2>
+  <svg id="sunPicture" viewBox="0 0 300 300" width="420" height="420">
     <!-- Center of the sun - always yellow, not tied to any activity -->
     <circle cx="150" cy="150" r="45" fill="#ffd54f" stroke="#333" stroke-width="3"></circle>
     <!-- 8 rays, positioned by hand around the circle. Each starts empty (fill="none")
@@ -376,6 +414,7 @@
   const activityListEl = document.getElementById("activityList");
   const checklistEl = document.getElementById("checklist");
   const colorPicker = document.getElementById("colorPicker");
+  const completionToast = document.getElementById("completionToast");
   const rayGroup = document.getElementById("rayGroup");
   const dayStartHourInput = document.getElementById("dayStartHour");
   const hourGrid = document.getElementById("hourGrid");
@@ -416,6 +455,14 @@
     renderSchedule(); // new activity means the schedule needs to grow too
   }
 
+  function showCompletionToast() {
+    completionToast.classList.add("show");
+    clearTimeout(showCompletionToast.timeoutId);
+    showCompletionToast.timeoutId = setTimeout(() => {
+      completionToast.classList.remove("show");
+    }, 3200);
+  }
+
   function renderChecklist() {
     checklistEl.innerHTML = "";
 
@@ -441,10 +488,12 @@
       colorInput.disabled = !checkbox.checked;
 
       checkbox.addEventListener("change", () => {
+        const wasChecked = item.done;
         item.done = checkbox.checked;
         if (item.done) {
           item.color = item.color || colorPicker.value;
           colorInput.value = item.color;
+          showCompletionToast();
         } else {
           item.color = null;
         }
