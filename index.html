@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Activity Spinner</title>
+<style>
+  body {
+    font-family: sans-serif;
+    text-align: center;
+    background: #fdf6e3;
+    margin: 0;
+  }
+
+  .siteHeader {
+    background: #b9e7c0;
+    color: #1f2d1a;
+    padding: 18px 20px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
+  .siteHeader h1 {
+    margin: 0;
+    font-size: 2.2rem;
+  }
+
+  .miniSunRow {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    height: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .miniSun {
+    display: block;
+    color: #f7c948;
+    font-size: 25px;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(83, 67, 20, 0.25);
+    animation: spinMiniSun 6s linear infinite;
+  }
+
+  .miniSun:nth-child(2) { animation-delay: -1.2s; }
+  .miniSun:nth-child(3) { animation-delay: -2.4s; }
+  .miniSun:nth-child(4) { animation-delay: -3.6s; }
+  .miniSun:nth-child(5) { animation-delay: -4.8s; }
+  .miniSun:nth-child(6) { animation-delay: -1.8s; }
+  .miniSun:nth-child(7) { animation-delay: -3s; }
+  .miniSun:nth-child(8) { animation-delay: -4.2s; }
+  .miniSun:nth-child(9) { animation-delay: -5.4s; }
+
+  @keyframes spinMiniSun {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .miniSun { animation: none; }
+  }
+
+  #statusPanel {
+    max-width: 640px;
+    margin: 16px auto 0;
+  }
+
+  #statusPanel p {
+    margin: 8px 0;
+  }
+
+  #nextStepsHint {
+    display: none;
+    padding: 10px 14px;
+    background: #fff3a6;
+    border: 1px solid #e5c94f;
+    border-radius: 8px;
+    color: #334b2b;
+    font-weight: 600;
+  }
+
+  #nextStepsHint.show {
+    display: block;
+  }
+
+  #result {
+    display: inline-block;
+    padding: 12px 18px;
+    border-radius: 16px;
+    background: #f9d9df;
+    color: #3a2b2d;
+    font-size: 1.2rem;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  /* The wheel is just a div with a colored conic-gradient background,
+     sliced into equal sections - one per activity. */
+  #wheel {
+    width: min(420px, 80vw);
+    height: min(420px, 80vw);
+    margin: 24px auto 20px;
+    border-radius: 50%;
+    border: 6px solid #333;
+    position: relative;
+    transition: transform 4s cubic-bezier(0.17, 0.67, 0.32, 1.4);
+    /* transform gets set by JS when we spin - this transition is what
+       makes it visually "ease out" instead of snapping instantly */
+  }
+
+  .wheelLabel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 110px;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+    font-weight: 700;
+    color: #222;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+    pointer-events: none;
+  }
+
+  /* A little pointer fixed above the wheel so you can see what it landed on */
+  #pointer {
+    width: 0; height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 25px solid #333;
+    margin: 0 auto;
+  }
+
+  button {
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  #wheelLayout {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 32px;
+    margin: 24px auto 0;
+    max-width: 1080px;
+    padding: 0 20px;
+  }
+
+  .wheelSide {
+    flex: 0 0 360px;
+  }
+
+  .wheelCenter {
+    flex: 0 1 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #bucketListEditor {
+    max-width: 320px;
+    margin: 0;
+    text-align: left;
+    background: #fff9e6;
+    border: 2px solid #f5c344;
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+
+  #bucketListEditor input {
+    padding: 8px;
+    font-size: 14px;
+    width: 60%;
+  }
+
+  #bucketListEditor button {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+
+  #activityList {
+    list-style: none;
+    padding: 0;
+    margin-top: 10px;
+  }
+
+  #activityList li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+  }
+
+  #activityList li .activityDurationInput {
+    width: 70px;
+    min-width: 70px;
+    font-size: 12px;
+    padding: 5px 6px;
+  }
+
+  #activityList li .activityLabel {
+    flex: 1;
+  }
+
+  #activityList button {
+    padding: 2px 8px;
+    font-size: 12px;
+    background: #f28b82;
+    border: none;
+    border-radius: 4px;
+    color: white;
+  }
+
+  #mainNav {
+    padding: 16px;
+    background: #f9d9df;
+  }
+
+  #mainNav button {
+    background: none;
+    border: 2px solid #fbbc04;
+    color: #000;
+    padding: 8px 16px;
+    margin: 0 6px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  #mainNav button.activeNav {
+    background: #fbbc04;
+    color: #000;
+  }
+
+  #checklistLayout {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+    max-width: 1000px;
+    margin: 24px auto 0;
+    padding: 0 20px;
+  }
+
+  .checklistPane {
+    flex: 0 0 360px;
+    text-align: left;
+  }
+
+  .sunPane {
+    flex: 0 0 500px;
+    text-align: center;
+  }
+
+  #checklist {
+    list-style: none;
+    padding: 0;
+    max-width: 320px;
+    margin: 16px 0;
+    text-align: left;
+  }
+
+  #emptyChecklistMessage {
+    margin: 16px 0;
+    padding: 14px;
+    background: #fce4c8;
+    border: 1px solid #e7b98f;
+    border-radius: 6px;
+    color: #624b3b;
+  }
+
+  #checklist li {
+    background: #fff;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  #checklist li .checkLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  #checklist li.done label {
+    text-decoration: line-through;
+    color: #999;
+  }
+
+  #checklist li input[type="color"] {
+    width: 36px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  #completionToast {
+    display: none;
+    max-width: 520px;
+    margin: 12px auto 0;
+    background: #fff8d6;
+    border: 2px solid #f5c344;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  #completionToast.show {
+    display: block;
+  }
+
+  #allDoneToast {
+    display: none;
+    max-width: 520px;
+    margin: 12px auto 0;
+    background: #fbe7a1;
+    border: 2px solid #e4b93f;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  #allDoneToast.show {
+    display: block;
+  }
+
+  .paintButton {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: #e8f7d6;
+    color: #1f2d1a;
+    cursor: pointer;
+  }
+
+  .deleteChecklistButton {
+    padding: 4px 7px;
+    font-size: 12px;
+    border: 1px solid #d98282;
+    border-radius: 4px;
+    background: #fff;
+    color: #b34f4f;
+    cursor: pointer;
+  }
+
+  .ray {
+    stroke: #333;
+    stroke-width: 2;
+    fill: none; /* empty until colored in */
+  }
+
+  #rayGroup {
+    transform-box: view-box;
+    transform-origin: center;
+    animation: orbitSunRays 18s linear infinite;
+  }
+
+  @keyframes orbitSunRays {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #rayGroup {
+      animation: none;
+    }
+  }
+
+  #scheduleControls {
+    margin: 12px 0;
+  }
+
+  #scheduleDate {
+    text-align: center;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #56705b;
+  }
+
+  .pageDate {
+    text-align: center;
+    margin: 0 0 12px;
+    font-weight: 700;
+    color: #56705b;
+  }
+
+  #wheelScreen .pageDate {
+    margin-top: 18px;
+  }
+
+  #scheduleControls input {
+    width: 50px;
+    padding: 4px;
+  }
+
+  #resetActivitiesBtn {
+    display: block;
+    margin: 14px auto 0;
+    padding: 8px 14px;
+    border: 1px solid #d98282;
+    border-radius: 5px;
+    background: #fff;
+    color: #b34f4f;
+    cursor: pointer;
+  }
+
+  /* This container's height is set by JS to match (hours shown * pxPerHour),
+     so hourGrid lines and scheduleBlocks are always drawn on the same scale. */
+  #scheduleContainer {
+    position: relative;
+    max-width: 400px;
+    margin: 20px auto;
+    border-left: 2px solid #333;
+  }
+
+  .hourLine {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    border-top: 1px solid #ddd;
+  }
+
+  .hourLabel {
+    position: absolute;
+    left: -55px;
+    width: 50px;
+    text-align: right;
+    font-size: 12px;
+    color: #666;
+  }
+
+  .scheduleBlock {
+    position: absolute;
+    left: 60px;
+    right: 10px;
+    background: #fff475;
+    border: 2px solid #f5c344;
+    border-radius: 6px;
+    padding: 4px 8px;
+    box-sizing: border-box;
+    overflow: visible;
+    font-size: 13px;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .scheduleBlock.dragging {
+    opacity: 0.55;
+    cursor: grabbing;
+  }
+
+  .scheduleBlock .blockTime {
+    font-size: 11px;
+    color: #666;
+  }
+
+  .scheduleBlock strong {
+    display: block;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .scheduleBlock input {
+    width: 50px;
+    font-size: 12px;
+    padding: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header class="siteHeader">
+  <h1>Your Sunny Day</h1>
+</header>
+
+<div class="miniSunRow" aria-hidden="true">
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+  <span class="miniSun">☀</span>
+</div>
+
+<!-- ---- NAVIGATION ---- -->
+<nav id="mainNav">
+  <button class="navBtn" data-target="wheelScreen">Wheel</button>
+  <button class="navBtn" data-target="checklistScreen">Checklist</button>
+  <button class="navBtn" data-target="scheduleScreen">Schedule</button>
+</nav>
+
+<!-- ==== SCREEN 1: WHEEL ==== -->
+<div id="wheelScreen" class="screen">
+
+<p class="pageDate"></p>
+
+<div id="statusPanel">
+  <p id="result"></p>
+  <p id="spinAgainHint">Spin the wheel a few times to bedazzle your day's itinerary with activities! Each spin adds another activity to your schedule. </p>
+  <p id="nextStepsHint">Keep spinning until you have your desired amount of activities. Then, view your checklist and shedule.</p>
+</div>
+
+<div id="wheelLayout">
+  <!-- ---- BUCKET LIST EDITOR ---- -->
+  <!-- Lets the user build their own activity list instead of using a hardcoded one.
+       This list feeds directly into the wheel below. -->
+  <div class="wheelSide">
+    <div id="bucketListEditor">
+      <h2>Your Bucket List</h2>
+      <input type="text" id="newActivityInput" placeholder="Add an activity...">
+      <input type="number" id="newDurationInput" placeholder="Minutes" min="5" step="5" value="30">
+      <button id="addActivityBtn">Add</button>
+      <ul id="activityList"></ul>
+    </div>
+  </div>
+
+  <div class="wheelCenter">
+    <button id="spinBtn">Spin the Wheel</button>
+    <div id="pointer"></div>
+    <div id="wheel"></div>
+    <button id="resetActivitiesBtn" type="button">Reset Today's Activities</button>
+  </div>
+</div>
+
+</div>
+<!-- ==== END SCREEN 1 ==== -->
+
+<!-- ==== SCREEN 2: CHECKLIST + COLORING ==== -->
+<div id="checklistScreen" class="screen" style="display:none">
+
+  <h1>Today's Checklist</h1>
+  <p class="pageDate"></p>
+  <p>Check off an activity to fill in a ray of sunshine.</p>
+
+  <div id="completionToast" role="status" aria-live="polite">
+    Congrats on completing an activity! Pick a color and fill in a ray of sunshine.
+  </div>
+
+  <div id="allDoneToast" role="status" aria-live="polite">
+    Congratulations on finishing all your activities!
+  </div>
+
+  <div id="checklistLayout">
+    <div class="checklistPane">
+      <div id="colorPickerWrap">
+        Pick a color: <input type="color" id="colorPicker" value="#fbbc04">
+      </div>
+      <ul id="checklist"></ul>
+    </div>
+
+    <div class="sunPane">
+      <h2>Your Sunshine Mosaic</h2>
+      <svg id="sunPicture" viewBox="0 0 300 300" width="420" height="420">
+        <!-- Center of the sun - always yellow, not tied to any activity -->
+        <circle id="centerSun" cx="150" cy="150" r="45" fill="none" stroke="#333" stroke-width="3"></circle>
+        <!-- 8 rays, positioned by hand around the circle. Each starts empty (fill="none")
+             and gets colored in by JS when its linked checklist item is checked. -->
+        <g id="rayGroup"></g>
+      </svg>
+    </div>
+  </div>
+
+</div>
+<!-- ==== END SCREEN 2 ==== -->
+
+<!-- ==== SCREEN 3: SCHEDULE ==== -->
+<div id="scheduleScreen" class="screen" style="display:none">
+
+  <h1>Your Schedule</h1>
+  <p id="scheduleDate" class="pageDate"></p>
+  <p>Auto-built from whatever activities you've spun so far today.</p>
+
+  <div id="scheduleControls">
+    Day starts at:
+    <input type="number" id="dayStartHour" min="0" max="23" value="8"> :00
+  </div>
+
+  <!-- The hour grid (background lines/labels) and the activity blocks are
+       both absolutely positioned inside this same container, at the same
+       pixels-per-minute scale, so they always line up. -->
+  <div id="scheduleContainer">
+    <div id="hourGrid"></div>
+    <div id="scheduleBlocks"></div>
+  </div>
+
+</div>
+<!-- ==== END SCREEN 3 ====-->
+
+<script>
+  // ---- 1. YOUR DATA ----
+  // Default list used only the very first time someone opens the app
+  // (before they've customized anything). After that, whatever is saved
+  // in localStorage takes over.
+  const defaultActivities = [
+    { name: "Go for a walk", duration: 30 },
+    { name: "Read a book", duration: 45 },
+    { name: "Bake something", duration: 60 },
+    { name: "Call a friend", duration: 20 },
+    { name: "Draw or paint", duration: 40 },
+    { name: "Watch the sunset", duration: 20 }
+  ];
+
+  // Load saved list from localStorage, or fall back to the defaults.
+  // localStorage only stores strings, so we JSON.stringify/parse arrays.
+  let activities = JSON.parse(localStorage.getItem("activities")) || [...defaultActivities];
+
+  // Migration safety net: if you tested this before durations were added,
+  // your saved list is plain strings like "Read a book" instead of objects.
+  // This upgrades them in place so old test data doesn't break the app.
+  activities = activities.map(a => typeof a === "string" ? { name: a, duration: 30 } : a);
+
+  const wheel = document.getElementById("wheel");
+  const spinBtn = document.getElementById("spinBtn");
+  const resultText = document.getElementById("result");
+  const nextStepsHint = document.getElementById("nextStepsHint");
+  const newActivityInput = document.getElementById("newActivityInput");
+  const newDurationInput = document.getElementById("newDurationInput");
+  const addActivityBtn = document.getElementById("addActivityBtn");
+  const activityListEl = document.getElementById("activityList");
+  const checklistEl = document.getElementById("checklist");
+  const colorPicker = document.getElementById("colorPicker");
+  const completionToast = document.getElementById("completionToast");
+  const allDoneToast = document.getElementById("allDoneToast");
+  const centerSun = document.getElementById("centerSun");
+  const rayGroup = document.getElementById("rayGroup");
+  const pastelColors = ["#f8d9d9", "#fce4c8", "#fbe7a1", "#d9f0c2", "#cfeef0", "#dfe7ff", "#efd9f9", "#f9d9ea"];
+  const dayStartHourInput = document.getElementById("dayStartHour");
+  const hourGrid = document.getElementById("hourGrid");
+  const scheduleBlocksEl = document.getElementById("scheduleBlocks");
+  const scheduleContainer = document.getElementById("scheduleContainer");
+  const resetActivitiesBtn = document.getElementById("resetActivitiesBtn");
+  const formattedDate = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  }).format(new Date());
+  document.querySelectorAll(".pageDate").forEach(dateElement => {
+    dateElement.textContent = formattedDate;
+  });
+
+  // ---- NAVIGATION ----
+  // Every element with class "screen" gets hidden, then just the target is shown.
+  // This is the entire "routing" this app needs - no library required.
+  const navButtons = document.querySelectorAll(".navBtn");
+  navButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".screen").forEach(s => s.style.display = "none");
+      document.getElementById(btn.dataset.target).style.display = "block";
+
+      navButtons.forEach(b => b.classList.remove("activeNav"));
+      btn.classList.add("activeNav");
+    });
+  });
+  navButtons[0].classList.add("activeNav"); // wheel screen active by default
+
+  // ---- TODAY'S CHECKLIST DATA ----
+  // Separate from the bucket list! The bucket list is what CAN be spun.
+  // todaysList is what HAS been spun today, and whether it's been completed.
+  const savedTodaysList = localStorage.getItem("todaysList");
+  let todaysList = savedTodaysList
+    ? JSON.parse(savedTodaysList)
+    : [...activities]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Math.min(5, activities.length))
+      .map(activity => ({
+        name: activity.name,
+        duration: activity.duration || 30,
+        done: false,
+        color: null,
+        rayIndex: null
+      }));
+  todaysList = todaysList.map(item => ({ duration: 30, ...item })); // fill in duration if missing from old test data
+  let nextStartMinute = 120;
+  todaysList = todaysList.map(item => {
+    if (!Number.isFinite(item.startMinute)) {
+      item.startMinute = nextStartMinute;
+    }
+    nextStartMinute = Math.max(nextStartMinute, item.startMinute + item.duration);
+    return item;
+  });
+
+  function saveTodaysList() {
+    localStorage.setItem("todaysList", JSON.stringify(todaysList));
+  }
+
+  if (!savedTodaysList) saveTodaysList();
+
+  function resetTodaysActivities() {
+    todaysList = [];
+    saveTodaysList();
+    resultText.textContent = "";
+    renderChecklist();
+    renderSchedule();
+    buildSunRays();
+    updateSunRays();
+    updateAllDoneState();
+  }
+
+  // Called every time the wheel lands on an activity - adds it as a new
+  // uncompleted item on the checklist screen, carrying its estimated duration along.
+  function addToTodaysList(activity) {
+    const lastEnd = todaysList.reduce(
+      (latest, item) => Math.max(latest, item.startMinute + item.duration),
+      120
+    );
+    todaysList.push({ name: activity.name, duration: activity.duration || 30, startMinute: lastEnd, done: false, color: null, rayIndex: null });
+    saveTodaysList();
+    renderChecklist();
+    renderSchedule(); // new activity means the schedule needs to grow too
+    buildSunRays();
+    updateSunRays();
+    updateAllDoneState();
+  }
+
+  function showCompletionToast() {
+    completionToast.classList.add("show");
+    clearTimeout(showCompletionToast.timeoutId);
+    showCompletionToast.timeoutId = setTimeout(() => {
+      completionToast.classList.remove("show");
+    }, 3200);
+  }
+
+  function updateAllDoneState() {
+    const allDone = todaysList.length > 0 && todaysList.every(item => item.done);
+    allDoneToast.classList.toggle("show", allDone);
+    centerSun.setAttribute("fill", allDone ? "#fbe7a1" : "none");
+  }
+
+  function renderChecklist() {
+    checklistEl.innerHTML = "";
+
+    if (todaysList.length === 0) {
+      const emptyMessage = document.createElement("p");
+      emptyMessage.id = "emptyChecklistMessage";
+      emptyMessage.textContent = "You don't have anything to do today yet! Spin for some activities on the Wheel.";
+      checklistEl.appendChild(emptyMessage);
+      return;
+    }
+
+    todaysList.forEach((item, index) => {
+      const li = document.createElement("li");
+      if (item.done) li.classList.add("done");
+
+      const checkWrap = document.createElement("div");
+      checkWrap.className = "checkLabel";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = item.done;
+      checkbox.id = "check" + index;
+
+      const label = document.createElement("label");
+      label.htmlFor = checkbox.id;
+      label.textContent = `${item.name} (${item.duration} min)`;
+
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = item.color || colorPicker.value;
+      colorInput.disabled = !checkbox.checked;
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "deleteChecklistButton";
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", () => {
+        todaysList.splice(index, 1);
+        saveTodaysList();
+        renderChecklist();
+        renderSchedule();
+        buildSunRays();
+        updateSunRays();
+        updateAllDoneState();
+      });
+
+      checkbox.addEventListener("change", () => {
+        item.done = checkbox.checked;
+        if (item.done) {
+          item.color = item.color || colorPicker.value;
+          colorInput.value = item.color;
+          showCompletionToast();
+        } else {
+          item.color = null;
+          item.rayIndex = null;
+        }
+
+        colorInput.disabled = !item.done;
+        saveTodaysList();
+        renderSchedule();
+        renderChecklist();
+        buildSunRays();
+        updateSunRays();
+        updateAllDoneState();
+      });
+
+      colorInput.addEventListener("input", () => {
+        item.color = colorInput.value;
+        if (item.done) {
+          saveTodaysList();
+          renderSchedule();
+          buildSunRays();
+          updateSunRays();
+          updateAllDoneState();
+        }
+      });
+
+      checkWrap.appendChild(checkbox);
+      checkWrap.appendChild(label);
+      li.appendChild(checkWrap);
+      li.appendChild(colorInput);
+      li.appendChild(deleteButton);
+
+      checklistEl.appendChild(li);
+    });
+  }
+
+  // ---- SUN RAY COLORING PICTURE ----
+  // Each checklist activity owns the ray at the same index.
+  function getRayCount() {
+    return todaysList.length;
+  }
+
+  function buildSunRays() {
+    rayGroup.innerHTML = "";
+    const rayCount = getRayCount();
+    if (rayCount === 0) return;
+
+    for (let i = 0; i < rayCount; i++) {
+      const angle = (i / rayCount) * 2 * Math.PI; // spread rays evenly around the circle
+      const innerRadius = 55, outerRadius = 100;
+      const cx = 150, cy = 150;
+
+      // Simple triangle ray pointing outward from the sun's center
+      const x1 = cx + Math.cos(angle - 0.15) * innerRadius;
+      const y1 = cy + Math.sin(angle - 0.15) * innerRadius;
+      const x2 = cx + Math.cos(angle + 0.15) * innerRadius;
+      const y2 = cy + Math.sin(angle + 0.15) * innerRadius;
+      const x3 = cx + Math.cos(angle) * outerRadius;
+      const y3 = cy + Math.sin(angle) * outerRadius;
+
+      const triangle = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      triangle.setAttribute("points", `${x1},${y1} ${x2},${y2} ${x3},${y3}`);
+      triangle.setAttribute("class", "ray");
+      triangle.setAttribute("id", "ray" + i);
+      triangle.style.fill = "none";
+      rayGroup.appendChild(triangle);
+    }
+  }
+
+  // Fill each ray from the matching checklist item, or leave it empty.
+  function updateSunRays() {
+    for (let i = 0; i < getRayCount(); i++) {
+      const ray = document.getElementById("ray" + i);
+      const item = todaysList[i];
+      ray.style.fill = item && item.done && item.color ? item.color : "none";
+    }
+  }
+
+  // ---- SCHEDULE ----
+  // Activities stack back-to-back starting from "day start hour" in the
+  // shared todaysList order. Dragging a block changes that order.
+
+  const SCHEDULE_START_HOUR = 6;  // grid always starts showing 6am...
+  const SCHEDULE_END_HOUR = 23;   // ...through 11pm
+  const PX_PER_MIN = 1.4;         // scale: how tall one minute is on screen
+
+  function buildHourGrid() {
+    hourGrid.innerHTML = "";
+    const totalHours = SCHEDULE_END_HOUR - SCHEDULE_START_HOUR;
+
+    for (let h = 0; h <= totalHours; h++) {
+      const hour = SCHEDULE_START_HOUR + h;
+      const topPx = h * 60 * PX_PER_MIN;
+
+      const line = document.createElement("div");
+      line.className = "hourLine";
+      line.style.top = topPx + "px";
+      hourGrid.appendChild(line);
+
+      const label = document.createElement("div");
+      label.className = "hourLabel";
+      label.style.top = (topPx - 7) + "px"; // nudge up slightly to center on the line
+      const displayHour = hour % 24;
+      label.textContent = (displayHour === 0 ? 12 : displayHour > 12 ? displayHour - 12 : displayHour)
+        + (displayHour >= 12 ? "pm" : "am");
+      hourGrid.appendChild(label);
+    }
+
+    const totalPx = totalHours * 60 * PX_PER_MIN;
+    scheduleContainer.style.height = totalPx + "px";
+  }
+
+  function renderSchedule() {
+    scheduleBlocksEl.innerHTML = "";
+
+    const sortedIndexes = todaysList
+      .map((item, index) => ({ index, start: item.startMinute, end: item.startMinute + item.duration }))
+      .sort((a, b) => a.start - b.start);
+    const layout = new Map();
+    let groupStart = 0;
+
+    while (groupStart < sortedIndexes.length) {
+      let groupEnd = groupStart + 1;
+      let groupEndTime = sortedIndexes[groupStart].end;
+
+      while (groupEnd < sortedIndexes.length && sortedIndexes[groupEnd].start < groupEndTime) {
+        groupEndTime = Math.max(groupEndTime, sortedIndexes[groupEnd].end);
+        groupEnd++;
+      }
+
+      const groupItems = sortedIndexes.slice(groupStart, groupEnd);
+      const laneEnds = [];
+      const groupLanes = new Map();
+      groupItems.forEach(entry => {
+        let lane = laneEnds.findIndex(laneEnd => laneEnd <= entry.start);
+        if (lane === -1) lane = laneEnds.length;
+        laneEnds[lane] = entry.end;
+        groupLanes.set(entry.index, lane);
+      });
+      groupLanes.forEach((lane, index) => layout.set(index, { lane, laneCount: laneEnds.length }));
+
+      groupStart = groupEnd;
+    }
+
+    todaysList.forEach((item, index) => {
+      const startMinutes = item.startMinute;
+      const topPx = startMinutes * PX_PER_MIN;
+      const heightPx = item.duration * PX_PER_MIN;
+      const { lane, laneCount } = layout.get(index);
+      const laneWidth = 100 / laneCount;
+
+      const block = document.createElement("div");
+      block.className = "scheduleBlock";
+      block.draggable = true;
+      block.style.top = topPx + "px";
+      block.style.height = heightPx + "px";
+      block.style.left = `calc(60px + ${lane * laneWidth}% )`;
+      block.style.right = `calc(10px + ${(laneCount - lane - 1) * laneWidth}% )`;
+
+      const pastelIndex = (index + 1) % pastelColors.length;
+      const color = item.done && item.color ? item.color : pastelColors[pastelIndex];
+      block.style.background = color;
+      block.style.borderColor = "#333";
+
+      block.innerHTML = `
+        <strong>${item.name}</strong>
+        <div class="blockTime">${item.duration} min</div>
+      `;
+
+      block.addEventListener("dragstart", event => {
+        block.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", String(index));
+      });
+
+      block.addEventListener("dragend", () => {
+        block.classList.remove("dragging");
+        scheduleBlocksEl.querySelectorAll(".scheduleBlock").forEach(entry => {
+          entry.classList.remove("drag-over");
+        });
+      });
+
+      scheduleBlocksEl.appendChild(block);
+    });
+  }
+
+  scheduleContainer.addEventListener("dragover", event => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  });
+
+  scheduleContainer.addEventListener("drop", event => {
+    event.preventDefault();
+    const draggedIndex = Number(event.dataTransfer.getData("text/plain"));
+    if (!Number.isInteger(draggedIndex) || !todaysList[draggedIndex]) return;
+
+    const scheduleBounds = scheduleContainer.getBoundingClientRect();
+    const droppedMinutes = Math.round((event.clientY - scheduleBounds.top) / PX_PER_MIN / 5) * 5;
+    const maxStart = (SCHEDULE_END_HOUR - SCHEDULE_START_HOUR) * 60 - todaysList[draggedIndex].duration;
+    todaysList[draggedIndex].startMinute = Math.max(0, Math.min(droppedMinutes, maxStart));
+    saveTodaysList();
+    renderSchedule();
+  });
+
+  dayStartHourInput.addEventListener("change", renderSchedule);
+
+  // ---- BUCKET LIST EDITOR LOGIC ----
+
+  function saveActivities() {
+    localStorage.setItem("activities", JSON.stringify(activities));
+  }
+
+  function syncTodaysListFromActivities() {
+    todaysList.forEach(item => {
+      const matchingActivity = activities.find(activity => activity.name === item.name);
+      if (matchingActivity) {
+        item.duration = matchingActivity.duration || item.duration || 30;
+      }
+    });
+    saveTodaysList();
+    renderChecklist();
+    renderSchedule();
+  }
+
+  // Redraws the <li> list AND rebuilds the wheel, since the wheel's
+  // slices depend directly on how many activities exist.
+  function renderActivityList() {
+    activityListEl.innerHTML = ""; // clear and rebuild each time - simplest way to keep it in sync
+
+    activities.forEach((activity, index) => {
+      const li = document.createElement("li");
+
+      const timeInput = document.createElement("input");
+      timeInput.type = "time";
+      timeInput.className = "activityTimeInput";
+      timeInput.value = activity.time || "09:00";
+
+      const label = document.createElement("span");
+      label.className = "activityLabel";
+      label.textContent = `${activity.name}`;
+
+      const durationInput = document.createElement("input");
+      durationInput.type = "number";
+      durationInput.className = "activityDurationInput";
+      durationInput.min = "5";
+      durationInput.step = "5";
+      durationInput.value = activity.duration || 30;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "×";
+      removeBtn.addEventListener("click", () => {
+        // Guard: don't allow removing the last activity, or the wheel breaks
+        if (activities.length <= 1) {
+          alert("You need at least one activity on your list!");
+          return;
+        }
+        activities.splice(index, 1); // remove this one item
+        saveActivities();
+        renderActivityList();
+        buildWheelBackground();
+      });
+
+      durationInput.addEventListener("change", () => {
+        activity.duration = parseInt(durationInput.value) || activity.duration || 30;
+        saveActivities();
+        syncTodaysListFromActivities();
+        renderActivityList();
+        buildWheelBackground();
+      });
+
+      li.appendChild(label);
+      li.appendChild(durationInput);
+      li.appendChild(removeBtn);
+      activityListEl.appendChild(li);
+    });
+  }
+
+  addActivityBtn.addEventListener("click", () => {
+    const value = newActivityInput.value.trim();
+    if (value === "") return; // ignore empty submissions
+
+    const duration = parseInt(newDurationInput.value) || 30; // fall back to 30 min if left blank/invalid
+
+    activities.push({ name: value, duration: duration });
+    saveActivities();
+    renderActivityList();
+    buildWheelBackground();
+    newActivityInput.value = ""; // clear the input for the next one
+    newDurationInput.value = "30";
+  });
+
+  // Also let Enter key submit, not just clicking Add
+  newActivityInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addActivityBtn.click();
+  });
+
+  // ---- 2. BUILD THE WHEEL VISUAL ----
+  // conic-gradient needs a comma separated list like:
+  // "red 0deg 60deg, blue 60deg 120deg, ..."
+  // We generate that automatically from however many activities you have,
+  // so you never have to hand-calculate degrees.
+  function buildWheelBackground() {
+    const colors = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#d7aefb", "#fdcfe8"];
+    const sliceAngle = 360 / activities.length;
+    let gradientParts = [];
+
+    wheel.innerHTML = "";
+
+    activities.forEach((activity, i) => {
+      const start = i * sliceAngle;
+      const end = start + sliceAngle;
+      const color = colors[i % colors.length]; // loop back through colors if more activities than colors
+      gradientParts.push(`${color} ${start}deg ${end}deg`);
+
+      const label = document.createElement("div");
+      label.className = "wheelLabel";
+      label.textContent = activity.name;
+
+      const angle = (i + 0.5) * sliceAngle;
+      const angleRadians = (angle - 90) * (Math.PI / 180);
+      const radius = 35;
+      const x = 50 + Math.cos(angleRadians) * radius;
+      const y = 50 + Math.sin(angleRadians) * radius;
+
+      label.style.left = `${x}%`;
+      label.style.top = `${y}%`;
+      wheel.appendChild(label);
+    });
+
+    wheel.style.background = `conic-gradient(${gradientParts.join(", ")})`;
+  }
+
+  // ---- 3. THE SPIN ITSELF ----
+  let currentRotation = 0; // tracks total rotation so repeated spins keep spinning forward, not snapping back
+
+  function spinWheel() {
+    spinBtn.disabled = true; // stop double-clicking mid-spin
+
+    const sliceAngle = 360 / activities.length;
+
+    // Pick a random activity index FIRST, then figure out what rotation
+    // lands the pointer on it. This is more reliable than picking a random
+    // rotation and figuring out the activity afterward.
+    const winningIndex = Math.floor(Math.random() * activities.length);
+
+    // Add several full spins (for visual effect) plus land in the middle of the winning slice.
+    // We rotate the wheel BACKWARDS to the slice because the pointer is fixed at the top.
+    const extraSpins = 5 * 360;
+    const targetAngle = 360 - (winningIndex * sliceAngle + sliceAngle / 2);
+
+    currentRotation += extraSpins + targetAngle;
+    wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+    // Wait for the CSS transition (4s, matches the 4s in the CSS above) to finish
+    // before showing the result and re-enabling the button.
+    setTimeout(() => {
+      const wonActivity = activities[winningIndex]; // now an object: { name, duration }
+      resultText.textContent = "Today's activity: " + wonActivity.name + " (" + wonActivity.duration + " min)";
+      addToTodaysList(wonActivity); // pushes it onto the checklist AND schedule
+      nextStepsHint.classList.add("show");
+      spinBtn.disabled = false;
+    }, 4000);
+  }
+
+  renderActivityList();
+  buildWheelBackground();
+  buildSunRays();
+  renderChecklist();
+  updateSunRays();
+  updateAllDoneState();
+  buildHourGrid();
+  renderSchedule();
+  spinBtn.addEventListener("click", spinWheel);
+  resetActivitiesBtn.addEventListener("click", resetTodaysActivities);
+</script>
+
+</body>
+</html>
