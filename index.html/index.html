@@ -386,7 +386,7 @@
     border-radius: 6px;
     padding: 4px 8px;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
     font-size: 13px;
     cursor: grab;
     user-select: none;
@@ -400,6 +400,13 @@
   .scheduleBlock .blockTime {
     font-size: 11px;
     color: #666;
+  }
+
+  .scheduleBlock strong {
+    display: block;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .scheduleBlock input {
@@ -590,6 +597,14 @@
   // todaysList is what HAS been spun today, and whether it's been completed.
   let todaysList = JSON.parse(localStorage.getItem("todaysList")) || [];
   todaysList = todaysList.map(item => ({ duration: 30, ...item })); // fill in duration if missing from old test data
+  let nextStartMinute = 120;
+  todaysList = todaysList.map(item => {
+    if (!Number.isFinite(item.startMinute)) {
+      item.startMinute = nextStartMinute;
+    }
+    nextStartMinute = Math.max(nextStartMinute, item.startMinute + item.duration);
+    return item;
+  });
 
   function saveTodaysList() {
     localStorage.setItem("todaysList", JSON.stringify(todaysList));
@@ -609,7 +624,11 @@
   // Called every time the wheel lands on an activity - adds it as a new
   // uncompleted item on the checklist screen, carrying its estimated duration along.
   function addToTodaysList(activity) {
-    todaysList.push({ name: activity.name, duration: activity.duration || 30, done: false, color: null, rayIndex: null });
+    const lastEnd = todaysList.reduce(
+      (latest, item) => Math.max(latest, item.startMinute + item.duration),
+      120
+    );
+    todaysList.push({ name: activity.name, duration: activity.duration || 30, startMinute: lastEnd, done: false, color: null, rayIndex: null });
     saveTodaysList();
     renderChecklist();
     renderSchedule(); // new activity means the schedule needs to grow too
@@ -798,19 +817,32 @@
   function renderSchedule() {
     scheduleBlocksEl.innerHTML = "";
 
-    const dayStartHour = parseInt(dayStartHourInput.value) || 8;
-    let cursorMinutes = (dayStartHour - SCHEDULE_START_HOUR) * 60; // minutes from top of grid
+    const laneEnds = [];
+    const lanes = todaysList.map(item => {
+      const startMinutes = item.startMinute;
+      let lane = laneEnds.findIndex(laneEnd => laneEnd <= startMinutes);
+      if (lane === -1) {
+        lane = laneEnds.length;
+      }
+      laneEnds[lane] = startMinutes + item.duration;
+      return lane;
+    });
+    const laneCount = Math.max(1, laneEnds.length);
+    const laneWidth = 100 / laneCount;
 
     todaysList.forEach((item, index) => {
-      const startMinutes = Number.isFinite(item.startMinute) ? item.startMinute : cursorMinutes;
+      const startMinutes = item.startMinute;
       const topPx = startMinutes * PX_PER_MIN;
       const heightPx = item.duration * PX_PER_MIN;
+      const lane = lanes[index];
 
       const block = document.createElement("div");
       block.className = "scheduleBlock";
       block.draggable = true;
       block.style.top = topPx + "px";
       block.style.height = heightPx + "px";
+      block.style.left = `calc(60px + ${lane * laneWidth}% )`;
+      block.style.right = `calc(10px + ${(laneCount - lane - 1) * laneWidth}% )`;
 
       const pastelIndex = (index + 1) % pastelColors.length;
       const color = item.done && item.color ? item.color : pastelColors[pastelIndex];
@@ -836,7 +868,6 @@
       });
 
       scheduleBlocksEl.appendChild(block);
-      cursorMinutes = Math.max(cursorMinutes, startMinutes + item.duration);
     });
   }
 
