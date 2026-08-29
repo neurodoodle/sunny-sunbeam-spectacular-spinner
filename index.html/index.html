@@ -47,8 +47,8 @@
   /* The wheel is just a div with a colored conic-gradient background,
      sliced into equal sections - one per activity. */
   #wheel {
-    width: 300px;
-    height: 300px;
+    width: min(420px, 80vw);
+    height: min(420px, 80vw);
     margin: 24px auto 20px;
     border-radius: 50%;
     border: 6px solid #333;
@@ -62,11 +62,12 @@
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 64px;
+    width: 110px;
     text-align: center;
     transform: translate(-50%, -50%);
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.1;
+    overflow-wrap: anywhere;
     font-weight: 700;
     color: #222;
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
@@ -94,7 +95,7 @@
     align-items: flex-start;
     gap: 32px;
     margin: 24px auto 0;
-    max-width: 900px;
+    max-width: 1080px;
     padding: 0 20px;
   }
 
@@ -103,7 +104,7 @@
   }
 
   .wheelCenter {
-    flex: 0 0 300px;
+    flex: 0 1 420px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -214,6 +215,15 @@
     text-align: left;
   }
 
+  #emptyChecklistMessage {
+    margin: 16px 0;
+    padding: 14px;
+    background: #fce4c8;
+    border: 1px solid #e7b98f;
+    border-radius: 6px;
+    color: #624b3b;
+  }
+
   #checklist li {
     background: #fff;
     border-radius: 4px;
@@ -322,6 +332,10 @@
     color: #56705b;
   }
 
+  #wheelScreen .pageDate {
+    margin-top: 18px;
+  }
+
   #scheduleControls input {
     width: 50px;
     padding: 4px;
@@ -411,12 +425,11 @@
 <!-- ==== SCREEN 1: WHEEL ==== -->
 <div id="wheelScreen" class="screen">
 
-<h1>Your Sunny Day</h1>
 <p class="pageDate"></p>
 
 <div id="statusPanel">
   <p id="result"></p>
-  <p id="spinAgainHint">Spin the wheel a few times to bedazzle your whole day! Each spin adds another activity to your schedule.</p>
+  <p id="spinAgainHint">Spin the wheel a few times to bedazzle your day's itinerary with activities! Each spin adds another activity to your schedule.</p>
 </div>
 
 <div id="wheelLayout">
@@ -621,6 +634,14 @@
 
   function renderChecklist() {
     checklistEl.innerHTML = "";
+
+    if (todaysList.length === 0) {
+      const emptyMessage = document.createElement("p");
+      emptyMessage.id = "emptyChecklistMessage";
+      emptyMessage.textContent = "You don't have anything to do today yet! Spin for some activities on the Wheel.";
+      checklistEl.appendChild(emptyMessage);
+      return;
+    }
 
     todaysList.forEach((item, index) => {
       const li = document.createElement("li");
@@ -949,7 +970,7 @@
 
       const label = document.createElement("div");
       label.className = "wheelLabel";
-      label.textContent = activity.name.length > 12 ? activity.name.slice(0, 12) + "…" : activity.name;
+      label.textContent = activity.name;
 
       const angle = (i + 0.5) * sliceAngle;
       const angleRadians = (angle - 90) * (Math.PI / 180);
