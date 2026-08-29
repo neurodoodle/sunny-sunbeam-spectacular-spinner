@@ -308,6 +308,20 @@
     margin: 12px 0;
   }
 
+  #scheduleDate {
+    text-align: center;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #56705b;
+  }
+
+  .pageDate {
+    text-align: center;
+    margin: 0 0 12px;
+    font-weight: 700;
+    color: #56705b;
+  }
+
   #scheduleControls input {
     width: 50px;
     padding: 4px;
@@ -387,6 +401,7 @@
 <div id="wheelScreen" class="screen">
 
 <h1>Your Sunny Day</h1>
+<p class="pageDate"></p>
 
 <div id="statusPanel">
   <p id="result"></p>
@@ -421,6 +436,7 @@
 <div id="checklistScreen" class="screen" style="display:none">
 
   <h1>Today's Checklist</h1>
+  <p class="pageDate"></p>
   <p>Check off an activity to fill in a ray of sunshine.</p>
 
   <div id="completionToast" role="status" aria-live="polite">
@@ -458,6 +474,7 @@
 <div id="scheduleScreen" class="screen" style="display:none">
 
   <h1>Your Schedule</h1>
+  <p id="scheduleDate" class="pageDate"></p>
   <p>Auto-built from whatever activities you've spun so far today.</p>
 
   <div id="scheduleControls">
@@ -517,6 +534,15 @@
   const hourGrid = document.getElementById("hourGrid");
   const scheduleBlocksEl = document.getElementById("scheduleBlocks");
   const scheduleContainer = document.getElementById("scheduleContainer");
+  const formattedDate = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  }).format(new Date());
+  document.querySelectorAll(".pageDate").forEach(dateElement => {
+    dateElement.textContent = formattedDate;
+  });
 
   // ---- NAVIGATION ----
   // Every element with class "screen" gets hidden, then just the target is shown.
@@ -731,7 +757,8 @@
     let cursorMinutes = (dayStartHour - SCHEDULE_START_HOUR) * 60; // minutes from top of grid
 
     todaysList.forEach((item, index) => {
-      const topPx = cursorMinutes * PX_PER_MIN;
+      const startMinutes = Number.isFinite(item.startMinute) ? item.startMinute : cursorMinutes;
+      const topPx = startMinutes * PX_PER_MIN;
       const heightPx = item.duration * PX_PER_MIN;
 
       const block = document.createElement("div");
@@ -739,10 +766,6 @@
       block.draggable = true;
       block.style.top = topPx + "px";
       block.style.height = heightPx + "px";
-
-      const startHour24 = Math.floor(cursorMinutes / 60) + SCHEDULE_START_HOUR;
-      const startMin = cursorMinutes % 60;
-      const displayHour = startHour24 % 24;
 
       const pastelIndex = (index + 1) % pastelColors.length;
       const color = item.done && item.color ? item.color : pastelColors[pastelIndex];
@@ -767,29 +790,28 @@
         });
       });
 
-      block.addEventListener("dragover", event => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-      });
-
-      block.addEventListener("drop", event => {
-        event.preventDefault();
-        const draggedIndex = Number(event.dataTransfer.getData("text/plain"));
-        if (!Number.isInteger(draggedIndex) || draggedIndex === index) return;
-
-        const [movedItem] = todaysList.splice(draggedIndex, 1);
-        const targetIndex = draggedIndex < index ? index - 1 : index;
-        todaysList.splice(targetIndex, 0, movedItem);
-        saveTodaysList();
-        renderChecklist();
-        renderSchedule();
-        updateSunRays();
-      });
-
       scheduleBlocksEl.appendChild(block);
-      cursorMinutes += item.duration; // next block starts right after this one ends
+      cursorMinutes = Math.max(cursorMinutes, startMinutes + item.duration);
     });
   }
+
+  scheduleContainer.addEventListener("dragover", event => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  });
+
+  scheduleContainer.addEventListener("drop", event => {
+    event.preventDefault();
+    const draggedIndex = Number(event.dataTransfer.getData("text/plain"));
+    if (!Number.isInteger(draggedIndex) || !todaysList[draggedIndex]) return;
+
+    const scheduleBounds = scheduleContainer.getBoundingClientRect();
+    const droppedMinutes = Math.round((event.clientY - scheduleBounds.top) / PX_PER_MIN / 5) * 5;
+    const maxStart = (SCHEDULE_END_HOUR - SCHEDULE_START_HOUR) * 60 - todaysList[draggedIndex].duration;
+    todaysList[draggedIndex].startMinute = Math.max(0, Math.min(droppedMinutes, maxStart));
+    saveTodaysList();
+    renderSchedule();
+  });
 
   dayStartHourInput.addEventListener("change", renderSchedule);
 
