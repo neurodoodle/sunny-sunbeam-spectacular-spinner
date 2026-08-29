@@ -33,6 +33,20 @@
     margin: 8px 0;
   }
 
+  #nextStepsHint {
+    display: none;
+    padding: 10px 14px;
+    background: #fff3a6;
+    border: 1px solid #e5c94f;
+    border-radius: 8px;
+    color: #334b2b;
+    font-weight: 600;
+  }
+
+  #nextStepsHint.show {
+    display: block;
+  }
+
   #result {
     display: inline-block;
     padding: 12px 18px;
@@ -314,6 +328,27 @@
     fill: none; /* empty until colored in */
   }
 
+  #rayGroup {
+    transform-box: view-box;
+    transform-origin: center;
+    animation: orbitSunRays 18s linear infinite;
+  }
+
+  @keyframes orbitSunRays {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #rayGroup {
+      animation: none;
+    }
+  }
+
   #scheduleControls {
     margin: 12px 0;
   }
@@ -436,7 +471,8 @@
 
 <div id="statusPanel">
   <p id="result"></p>
-  <p id="spinAgainHint">Spin the wheel a few times to bedazzle your day's itinerary with activities! Each spin adds another activity to your schedule.</p>
+  <p id="spinAgainHint">Spin the wheel a few times to bedazzle your day's itinerary with activities! Each spin adds another activity to your schedule. </p>
+  <p id="nextStepsHint">Keep spinning until you have your desired amount of activities. Then, view your checklist and shedule.</p>
 </div>
 
 <div id="wheelLayout">
@@ -454,9 +490,9 @@
   </div>
 
   <div class="wheelCenter">
+    <button id="spinBtn">Spin the Wheel</button>
     <div id="pointer"></div>
     <div id="wheel"></div>
-    <button id="spinBtn">Spin the Wheel</button>
     <button id="resetActivitiesBtn" type="button">Reset Today's Activities</button>
   </div>
 </div>
@@ -551,6 +587,7 @@
   const wheel = document.getElementById("wheel");
   const spinBtn = document.getElementById("spinBtn");
   const resultText = document.getElementById("result");
+  const nextStepsHint = document.getElementById("nextStepsHint");
   const newActivityInput = document.getElementById("newActivityInput");
   const newDurationInput = document.getElementById("newDurationInput");
   const addActivityBtn = document.getElementById("addActivityBtn");
@@ -817,24 +854,41 @@
   function renderSchedule() {
     scheduleBlocksEl.innerHTML = "";
 
-    const laneEnds = [];
-    const lanes = todaysList.map(item => {
-      const startMinutes = item.startMinute;
-      let lane = laneEnds.findIndex(laneEnd => laneEnd <= startMinutes);
-      if (lane === -1) {
-        lane = laneEnds.length;
+    const sortedIndexes = todaysList
+      .map((item, index) => ({ index, start: item.startMinute, end: item.startMinute + item.duration }))
+      .sort((a, b) => a.start - b.start);
+    const layout = new Map();
+    let groupStart = 0;
+
+    while (groupStart < sortedIndexes.length) {
+      let groupEnd = groupStart + 1;
+      let groupEndTime = sortedIndexes[groupStart].end;
+
+      while (groupEnd < sortedIndexes.length && sortedIndexes[groupEnd].start < groupEndTime) {
+        groupEndTime = Math.max(groupEndTime, sortedIndexes[groupEnd].end);
+        groupEnd++;
       }
-      laneEnds[lane] = startMinutes + item.duration;
-      return lane;
-    });
-    const laneCount = Math.max(1, laneEnds.length);
-    const laneWidth = 100 / laneCount;
+
+      const groupItems = sortedIndexes.slice(groupStart, groupEnd);
+      const laneEnds = [];
+      const groupLanes = new Map();
+      groupItems.forEach(entry => {
+        let lane = laneEnds.findIndex(laneEnd => laneEnd <= entry.start);
+        if (lane === -1) lane = laneEnds.length;
+        laneEnds[lane] = entry.end;
+        groupLanes.set(entry.index, lane);
+      });
+      groupLanes.forEach((lane, index) => layout.set(index, { lane, laneCount: laneEnds.length }));
+
+      groupStart = groupEnd;
+    }
 
     todaysList.forEach((item, index) => {
       const startMinutes = item.startMinute;
       const topPx = startMinutes * PX_PER_MIN;
       const heightPx = item.duration * PX_PER_MIN;
-      const lane = lanes[index];
+      const { lane, laneCount } = layout.get(index);
+      const laneWidth = 100 / laneCount;
 
       const block = document.createElement("div");
       block.className = "scheduleBlock";
@@ -1044,6 +1098,7 @@
       const wonActivity = activities[winningIndex]; // now an object: { name, duration }
       resultText.textContent = "Today's activity: " + wonActivity.name + " (" + wonActivity.duration + " min)";
       addToTodaysList(wonActivity); // pushes it onto the checklist AND schedule
+      nextStepsHint.classList.add("show");
       spinBtn.disabled = false;
     }, 4000);
   }
