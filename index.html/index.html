@@ -63,9 +63,30 @@
     cursor: pointer;
   }
 
+  #wheelLayout {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 32px;
+    margin: 24px auto 0;
+    max-width: 900px;
+    padding: 0 20px;
+  }
+
+  .wheelSide {
+    flex: 0 0 360px;
+  }
+
+  .wheelCenter {
+    flex: 0 0 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
   #bucketListEditor {
     max-width: 320px;
-    margin: 20px auto;
+    margin: 0;
     text-align: left;
     background: #fff9e6;
     border: 2px solid #f5c344;
@@ -144,12 +165,29 @@
     margin-bottom: 6px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
+  }
+
+  #checklist li .checkLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
   }
 
   #checklist li.done label {
     text-decoration: line-through;
     color: #999;
+  }
+
+  #checklist li input[type="color"] {
+    width: 36px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
   }
 
   .ray {
@@ -236,21 +274,26 @@
   <p id="spinAgainHint">Spin a few more times to fill out your whole day — each spin adds another activity to your schedule.</p>
 </div>
 
-<!-- ---- BUCKET LIST EDITOR ---- -->
-<!-- Lets the user build their own activity list instead of using a hardcoded one.
-     This list feeds directly into the wheel below. -->
-<div id="bucketListEditor">
-  <h2>Your Bucket List</h2>
-  <input type="text" id="newActivityInput" placeholder="Add an activity...">
-  <input type="number" id="newDurationInput" placeholder="Minutes" min="5" step="5" value="30">
-  <button id="addActivityBtn">Add</button>
-  <ul id="activityList"></ul>
+<div id="wheelLayout">
+  <!-- ---- BUCKET LIST EDITOR ---- -->
+  <!-- Lets the user build their own activity list instead of using a hardcoded one.
+       This list feeds directly into the wheel below. -->
+  <div class="wheelSide">
+    <div id="bucketListEditor">
+      <h2>Your Bucket List</h2>
+      <input type="text" id="newActivityInput" placeholder="Add an activity...">
+      <input type="number" id="newDurationInput" placeholder="Minutes" min="5" step="5" value="30">
+      <button id="addActivityBtn">Add</button>
+      <ul id="activityList"></ul>
+    </div>
+  </div>
+
+  <div class="wheelCenter">
+    <div id="pointer"></div>
+    <div id="wheel"></div>
+    <button id="spinBtn">Spin the Wheel</button>
+  </div>
 </div>
-
-<div id="pointer"></div>
-<div id="wheel"></div>
-
-<button id="spinBtn">Spin the Wheel</button>
 
 </div>
 <!-- ==== END SCREEN 1 ==== -->
@@ -380,6 +423,9 @@
       const li = document.createElement("li");
       if (item.done) li.classList.add("done");
 
+      const checkWrap = document.createElement("div");
+      checkWrap.className = "checkLabel";
+
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = item.done;
@@ -389,18 +435,38 @@
       label.htmlFor = checkbox.id;
       label.textContent = `${item.name} (${item.duration} min)`;
 
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = item.color || colorPicker.value;
+      colorInput.disabled = !checkbox.checked;
+
       checkbox.addEventListener("change", () => {
         item.done = checkbox.checked;
-        // Only assign a color the moment it's checked - uses whatever
-        // color is currently selected in the picker. Unchecking clears it.
-        item.color = item.done ? colorPicker.value : null;
+        if (item.done) {
+          item.color = item.color || colorPicker.value;
+          colorInput.value = item.color;
+        } else {
+          item.color = null;
+        }
+
+        colorInput.disabled = !item.done;
         saveTodaysList();
         renderChecklist();
         updateSunRays();
       });
 
-      li.appendChild(checkbox);
-      li.appendChild(label);
+      colorInput.addEventListener("input", () => {
+        item.color = colorInput.value;
+        if (item.done) {
+          saveTodaysList();
+          updateSunRays();
+        }
+      });
+
+      checkWrap.appendChild(checkbox);
+      checkWrap.appendChild(label);
+      li.appendChild(checkWrap);
+      li.appendChild(colorInput);
       checklistEl.appendChild(li);
     });
   }
