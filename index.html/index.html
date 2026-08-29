@@ -423,7 +423,7 @@
       <h2>Your Sunshine Mosaic</h2>
       <svg id="sunPicture" viewBox="0 0 300 300" width="420" height="420">
         <!-- Center of the sun - always yellow, not tied to any activity -->
-        <circle cx="150" cy="150" r="45" fill="#ffd54f" stroke="#333" stroke-width="3"></circle>
+        <circle cx="150" cy="150" r="45" fill="none" stroke="#333" stroke-width="3"></circle>
         <!-- 8 rays, positioned by hand around the circle. Each starts empty (fill="none")
              and gets colored in by JS when its linked checklist item is checked. -->
         <g id="rayGroup"></g>
@@ -528,6 +528,8 @@
     saveTodaysList();
     renderChecklist();
     renderSchedule(); // new activity means the schedule needs to grow too
+    buildSunRays();
+    updateSunRays();
   }
 
   function showCompletionToast() {
@@ -571,6 +573,7 @@
         saveTodaysList();
         renderChecklist();
         renderSchedule();
+        buildSunRays();
         updateSunRays();
       });
 
@@ -589,6 +592,7 @@
         saveTodaysList();
         renderSchedule();
         renderChecklist();
+        buildSunRays();
         updateSunRays();
       });
 
@@ -597,6 +601,7 @@
         if (item.done) {
           saveTodaysList();
           renderSchedule();
+          buildSunRays();
           updateSunRays();
         }
       });
@@ -607,55 +612,23 @@
       li.appendChild(colorInput);
       li.appendChild(deleteButton);
 
-      if (item.done) {
-        const paintButton = document.createElement("button");
-        paintButton.type = "button";
-        paintButton.className = "paintButton";
-        paintButton.textContent = "Paint ray";
-
-        paintButton.addEventListener("click", () => {
-          if (!item.done) return;
-
-          const usedRayIndexes = new Set(
-            todaysList
-              .filter(entry => entry && entry !== item && entry.rayIndex !== null && entry.rayIndex !== undefined)
-              .map(entry => entry.rayIndex)
-          );
-
-          let nextRayIndex = null;
-          for (let i = 0; i < RAY_COUNT; i++) {
-            if (!usedRayIndexes.has(i)) {
-              nextRayIndex = i;
-              break;
-            }
-          }
-
-          if (nextRayIndex === null) {
-            nextRayIndex = item.rayIndex !== null && item.rayIndex !== undefined ? item.rayIndex : 0;
-          }
-
-          item.rayIndex = nextRayIndex;
-          item.color = item.color || colorPicker.value;
-          saveTodaysList();
-          updateSunRays();
-        });
-
-        li.appendChild(paintButton);
-      }
-
       checklistEl.appendChild(li);
     });
   }
 
   // ---- SUN RAY COLORING PICTURE ----
-  // Fixed at 8 rays, positioned by hand in a circle around the sun's center.
-  // Ray[i] represents todaysList[i] - the i-th activity picked today.
-  const RAY_COUNT = 8;
+  // Each checklist activity owns the ray at the same index.
+  function getRayCount() {
+    return todaysList.length;
+  }
 
   function buildSunRays() {
     rayGroup.innerHTML = "";
-    for (let i = 0; i < RAY_COUNT; i++) {
-      const angle = (i / RAY_COUNT) * 2 * Math.PI; // spread rays evenly around the circle
+    const rayCount = getRayCount();
+    if (rayCount === 0) return;
+
+    for (let i = 0; i < rayCount; i++) {
+      const angle = (i / rayCount) * 2 * Math.PI; // spread rays evenly around the circle
       const innerRadius = 55, outerRadius = 100;
       const cx = 150, cy = 150;
 
@@ -671,18 +644,17 @@
       triangle.setAttribute("points", `${x1},${y1} ${x2},${y2} ${x3},${y3}`);
       triangle.setAttribute("class", "ray");
       triangle.setAttribute("id", "ray" + i);
+      triangle.style.fill = "none";
       rayGroup.appendChild(triangle);
     }
   }
 
-  // Colors in (or empties) each ray based on todaysList, called after any
-  // checklist change. Activities beyond RAY_COUNT simply have no ray to fill -
-  // fine for a hackathon MVP, since most bucket lists won't exceed 8 in a day.
+  // Fill each ray from the matching checklist item, or leave it empty.
   function updateSunRays() {
-    for (let i = 0; i < RAY_COUNT; i++) {
+    for (let i = 0; i < getRayCount(); i++) {
       const ray = document.getElementById("ray" + i);
-      const assignedItem = todaysList.find(item => item && item.done && item.rayIndex === i);
-      ray.setAttribute("fill", assignedItem && assignedItem.color ? assignedItem.color : "none");
+      const item = todaysList[i];
+      ray.style.fill = item && item.done && item.color ? item.color : "none";
     }
   }
 
