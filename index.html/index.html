@@ -327,6 +327,17 @@
     padding: 4px;
   }
 
+  #resetActivitiesBtn {
+    display: block;
+    margin: 14px auto 0;
+    padding: 8px 14px;
+    border: 1px solid #d98282;
+    border-radius: 5px;
+    background: #fff;
+    color: #b34f4f;
+    cursor: pointer;
+  }
+
   /* This container's height is set by JS to match (hours shown * pxPerHour),
      so hourGrid lines and scheduleBlocks are always drawn on the same scale. */
   #scheduleContainer {
@@ -426,6 +437,7 @@
     <div id="pointer"></div>
     <div id="wheel"></div>
     <button id="spinBtn">Spin the Wheel</button>
+    <button id="resetActivitiesBtn" type="button">Reset Today's Activities</button>
   </div>
 </div>
 
@@ -534,6 +546,7 @@
   const hourGrid = document.getElementById("hourGrid");
   const scheduleBlocksEl = document.getElementById("scheduleBlocks");
   const scheduleContainer = document.getElementById("scheduleContainer");
+  const resetActivitiesBtn = document.getElementById("resetActivitiesBtn");
   const formattedDate = new Intl.DateTimeFormat(undefined, {
     weekday: "long",
     month: "long",
@@ -567,6 +580,17 @@
 
   function saveTodaysList() {
     localStorage.setItem("todaysList", JSON.stringify(todaysList));
+  }
+
+  function resetTodaysActivities() {
+    todaysList = [];
+    saveTodaysList();
+    resultText.textContent = "";
+    renderChecklist();
+    renderSchedule();
+    buildSunRays();
+    updateSunRays();
+    updateAllDoneState();
   }
 
   // Called every time the wheel lands on an activity - adds it as a new
@@ -981,6 +1005,7 @@
   buildHourGrid();
   renderSchedule();
   spinBtn.addEventListener("click", spinWheel);
+  resetActivitiesBtn.addEventListener("click", resetTodaysActivities);
 </script>
 
 </body>
