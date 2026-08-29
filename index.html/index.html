@@ -323,6 +323,13 @@
     box-sizing: border-box;
     overflow: hidden;
     font-size: 13px;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .scheduleBlock.dragging {
+    opacity: 0.55;
+    cursor: grabbing;
   }
 
   .scheduleBlock .blockTime {
@@ -538,8 +545,7 @@
 
       const label = document.createElement("label");
       label.htmlFor = checkbox.id;
-      const timeText = item.time ? `${item.time} · ` : "";
-      label.textContent = `${timeText}${item.name} (${item.duration} min)`;
+      label.textContent = `${item.name} (${item.duration} min)`;
 
       const colorInput = document.createElement("input");
       colorInput.type = "color";
@@ -559,6 +565,7 @@
 
         colorInput.disabled = !item.done;
         saveTodaysList();
+        renderSchedule();
         renderChecklist();
         updateSunRays();
       });
@@ -567,6 +574,7 @@
         item.color = colorInput.value;
         if (item.done) {
           saveTodaysList();
+          renderSchedule();
           updateSunRays();
         }
       });
@@ -656,9 +664,8 @@
   }
 
   // ---- SCHEDULE ----
-  // Simple sequential model: activities stack back-to-back starting from
-  // "day start hour," in the order they were spun. No drag-and-drop -
-  // editing a duration just recalculates everything after it automatically.
+  // Activities stack back-to-back starting from "day start hour" in the
+  // shared todaysList order. Dragging a block changes that order.
 
   const SCHEDULE_START_HOUR = 6;  // grid always starts showing 6am...
   const SCHEDULE_END_HOUR = 23;   // ...through 11pm
@@ -702,44 +709,53 @@
 
       const block = document.createElement("div");
       block.className = "scheduleBlock";
+      block.draggable = true;
       block.style.top = topPx + "px";
       block.style.height = heightPx + "px";
 
       const startHour24 = Math.floor(cursorMinutes / 60) + SCHEDULE_START_HOUR;
       const startMin = cursorMinutes % 60;
       const displayHour = startHour24 % 24;
-      const timeLabel = (displayHour === 0 ? 12 : displayHour > 12 ? displayHour - 12 : displayHour)
-        + ":" + String(startMin).padStart(2, "0") + (displayHour >= 12 ? "pm" : "am");
 
       const pastelIndex = (index + 1) % pastelColors.length;
-      const color = item.color || pastelColors[pastelIndex];
+      const color = item.done && item.color ? item.color : pastelColors[pastelIndex];
       block.style.background = color;
       block.style.borderColor = "#333";
 
-      const visualTime = item.time || timeLabel;
-
       block.innerHTML = `
         <strong>${item.name}</strong>
-        <div class="blockTime">${visualTime} · <input type="number" class="durationEdit" value="${item.duration}" min="5" step="5"> min</div>
-        <div class="blockTime"><input type="color" class="scheduleColorPicker" value="${color}" aria-label="Choose color for ${item.name}"> color</div>
+        <div class="blockTime">${item.duration} min</div>
       `;
 
-      // Editing duration right in the block recalculates this block's height
-      // AND every block after it, since they stack sequentially.
-      const durationInput = block.querySelector(".durationEdit");
-      durationInput.addEventListener("change", () => {
-        item.duration = parseInt(durationInput.value) || item.duration;
-        saveTodaysList();
-        renderSchedule(); // rebuild everything - simplest way to keep positions correct
+      block.addEventListener("dragstart", event => {
+        block.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", String(index));
       });
 
-      const scheduleColorPicker = block.querySelector(".scheduleColorPicker");
-      scheduleColorPicker.addEventListener("input", () => {
-        item.color = scheduleColorPicker.value;
-        item.done = true;
-        item.rayIndex = item.rayIndex !== null && item.rayIndex !== undefined ? item.rayIndex : 0;
-        block.style.background = item.color;
+      block.addEventListener("dragend", () => {
+        block.classList.remove("dragging");
+        scheduleBlocksEl.querySelectorAll(".scheduleBlock").forEach(entry => {
+          entry.classList.remove("drag-over");
+        });
+      });
+
+      block.addEventListener("dragover", event => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      });
+
+      block.addEventListener("drop", event => {
+        event.preventDefault();
+        const draggedIndex = Number(event.dataTransfer.getData("text/plain"));
+        if (!Number.isInteger(draggedIndex) || draggedIndex === index) return;
+
+        const [movedItem] = todaysList.splice(draggedIndex, 1);
+        const targetIndex = draggedIndex < index ? index - 1 : index;
+        todaysList.splice(targetIndex, 0, movedItem);
         saveTodaysList();
+        renderChecklist();
+        renderSchedule();
         updateSunRays();
       });
 
@@ -754,6 +770,18 @@
 
   function saveActivities() {
     localStorage.setItem("activities", JSON.stringify(activities));
+  }
+
+  function syncTodaysListFromActivities() {
+    todaysList.forEach(item => {
+      const matchingActivity = activities.find(activity => activity.name === item.name);
+      if (matchingActivity) {
+        item.duration = matchingActivity.duration || item.duration || 30;
+      }
+    });
+    saveTodaysList();
+    renderChecklist();
+    renderSchedule();
   }
 
   // Redraws the <li> list AND rebuilds the wheel, since the wheel's
@@ -797,6 +825,7 @@
       durationInput.addEventListener("change", () => {
         activity.duration = parseInt(durationInput.value) || activity.duration || 30;
         saveActivities();
+        syncTodaysListFromActivities();
         renderActivityList();
         buildWheelBackground();
       });
