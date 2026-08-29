@@ -146,9 +146,9 @@
     margin-bottom: 6px;
   }
 
-  #activityList li .activityTimeInput {
-    width: 78px;
-    min-width: 78px;
+  #activityList li .activityDurationInput {
+    width: 70px;
+    min-width: 70px;
     font-size: 12px;
     padding: 5px 6px;
   }
@@ -445,12 +445,12 @@
   // (before they've customized anything). After that, whatever is saved
   // in localStorage takes over.
   const defaultActivities = [
-    { name: "Go for a walk", duration: 30, time: "09:00" },
-    { name: "Read a book", duration: 45, time: "11:00" },
-    { name: "Bake something", duration: 60, time: "13:00" },
-    { name: "Call a friend", duration: 20, time: "15:00" },
-    { name: "Draw or paint", duration: 40, time: "16:30" },
-    { name: "Watch the sunset", duration: 20, time: "19:00" }
+    { name: "Go for a walk", duration: 30 },
+    { name: "Read a book", duration: 45 },
+    { name: "Bake something", duration: 60 },
+    { name: "Call a friend", duration: 20 },
+    { name: "Draw or paint", duration: 40 },
+    { name: "Watch the sunset", duration: 20 }
   ];
 
   // Load saved list from localStorage, or fall back to the defaults.
@@ -460,7 +460,7 @@
   // Migration safety net: if you tested this before durations were added,
   // your saved list is plain strings like "Read a book" instead of objects.
   // This upgrades them in place so old test data doesn't break the app.
-  activities = activities.map(a => typeof a === "string" ? { name: a, duration: 30, time: "09:00" } : { time: "09:00", ...a });
+  activities = activities.map(a => typeof a === "string" ? { name: a, duration: 30 } : a);
 
   const wheel = document.getElementById("wheel");
   const spinBtn = document.getElementById("spinBtn");
@@ -507,20 +507,10 @@
   // Called every time the wheel lands on an activity - adds it as a new
   // uncompleted item on the checklist screen, carrying its estimated duration along.
   function addToTodaysList(activity) {
-    todaysList.push({ name: activity.name, duration: activity.duration || 30, time: activity.time || "09:00", done: false, color: null, rayIndex: null });
+    todaysList.push({ name: activity.name, duration: activity.duration || 30, done: false, color: null, rayIndex: null });
     saveTodaysList();
     renderChecklist();
     renderSchedule(); // new activity means the schedule needs to grow too
-  }
-
-  function syncTodaysListTimes() {
-    todaysList.forEach(item => {
-      const matchingActivity = activities.find(activity => activity.name === item.name);
-      if (matchingActivity && matchingActivity.time) {
-        item.time = matchingActivity.time;
-      }
-    });
-    saveTodaysList();
   }
 
   function showCompletionToast() {
@@ -781,7 +771,14 @@
 
       const label = document.createElement("span");
       label.className = "activityLabel";
-      label.textContent = `${activity.name} (${activity.duration} min)`;
+      label.textContent = `${activity.name}`;
+
+      const durationInput = document.createElement("input");
+      durationInput.type = "number";
+      durationInput.className = "activityDurationInput";
+      durationInput.min = "5";
+      durationInput.step = "5";
+      durationInput.value = activity.duration || 30;
 
       const removeBtn = document.createElement("button");
       removeBtn.textContent = "×";
@@ -793,21 +790,19 @@
         }
         activities.splice(index, 1); // remove this one item
         saveActivities();
-        syncTodaysListTimes();
         renderActivityList();
         buildWheelBackground();
       });
 
-      timeInput.addEventListener("change", () => {
-        activity.time = timeInput.value;
+      durationInput.addEventListener("change", () => {
+        activity.duration = parseInt(durationInput.value) || activity.duration || 30;
         saveActivities();
-        syncTodaysListTimes();
-        renderChecklist();
-        renderSchedule();
+        renderActivityList();
+        buildWheelBackground();
       });
 
-      li.appendChild(timeInput);
       li.appendChild(label);
+      li.appendChild(durationInput);
       li.appendChild(removeBtn);
       activityListEl.appendChild(li);
     });
