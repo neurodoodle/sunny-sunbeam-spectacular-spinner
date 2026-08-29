@@ -262,6 +262,22 @@
     display: block;
   }
 
+  #allDoneToast {
+    display: none;
+    max-width: 520px;
+    margin: 12px auto 0;
+    background: #fbe7a1;
+    border: 2px solid #e4b93f;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  #allDoneToast.show {
+    display: block;
+  }
+
   .paintButton {
     padding: 6px 10px;
     font-size: 12px;
@@ -411,6 +427,10 @@
     Congrats on completing an activity! Pick a color and fill in a ray of sunshine.
   </div>
 
+  <div id="allDoneToast" role="status" aria-live="polite">
+    Congratulations on finishing all your activities!
+  </div>
+
   <div id="checklistLayout">
     <div class="checklistPane">
       <div id="colorPickerWrap">
@@ -423,7 +443,7 @@
       <h2>Your Sunshine Mosaic</h2>
       <svg id="sunPicture" viewBox="0 0 300 300" width="420" height="420">
         <!-- Center of the sun - always yellow, not tied to any activity -->
-        <circle cx="150" cy="150" r="45" fill="none" stroke="#333" stroke-width="3"></circle>
+        <circle id="centerSun" cx="150" cy="150" r="45" fill="none" stroke="#333" stroke-width="3"></circle>
         <!-- 8 rays, positioned by hand around the circle. Each starts empty (fill="none")
              and gets colored in by JS when its linked checklist item is checked. -->
         <g id="rayGroup"></g>
@@ -489,6 +509,8 @@
   const checklistEl = document.getElementById("checklist");
   const colorPicker = document.getElementById("colorPicker");
   const completionToast = document.getElementById("completionToast");
+  const allDoneToast = document.getElementById("allDoneToast");
+  const centerSun = document.getElementById("centerSun");
   const rayGroup = document.getElementById("rayGroup");
   const pastelColors = ["#f8d9d9", "#fce4c8", "#fbe7a1", "#d9f0c2", "#cfeef0", "#dfe7ff", "#efd9f9", "#f9d9ea"];
   const dayStartHourInput = document.getElementById("dayStartHour");
@@ -530,6 +552,7 @@
     renderSchedule(); // new activity means the schedule needs to grow too
     buildSunRays();
     updateSunRays();
+    updateAllDoneState();
   }
 
   function showCompletionToast() {
@@ -538,6 +561,12 @@
     showCompletionToast.timeoutId = setTimeout(() => {
       completionToast.classList.remove("show");
     }, 3200);
+  }
+
+  function updateAllDoneState() {
+    const allDone = todaysList.length > 0 && todaysList.every(item => item.done);
+    allDoneToast.classList.toggle("show", allDone);
+    centerSun.setAttribute("fill", allDone ? "#fbe7a1" : "none");
   }
 
   function renderChecklist() {
@@ -575,6 +604,7 @@
         renderSchedule();
         buildSunRays();
         updateSunRays();
+        updateAllDoneState();
       });
 
       checkbox.addEventListener("change", () => {
@@ -594,6 +624,7 @@
         renderChecklist();
         buildSunRays();
         updateSunRays();
+        updateAllDoneState();
       });
 
       colorInput.addEventListener("input", () => {
@@ -603,6 +634,7 @@
           renderSchedule();
           buildSunRays();
           updateSunRays();
+          updateAllDoneState();
         }
       });
 
@@ -923,6 +955,7 @@
   buildSunRays();
   renderChecklist();
   updateSunRays();
+  updateAllDoneState();
   buildHourGrid();
   renderSchedule();
   spinBtn.addEventListener("click", spinWheel);
